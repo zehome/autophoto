@@ -69,19 +69,35 @@ class Photo(AP3obj):
             self._stat = os.stat(self.abspath)
         return self._stat
 
+    def getType(self):
+        path = self.relpath.lower()
+        if path.endswith("png"):
+            return "PNG"
+        elif path.endswith("jpg"):
+            return "JPG"
+        assert(False)
+
+    def getDirName(self):
+        return os.path.dirname(self.relpath)
+
     def _serialize(self, **kwargs):
         stat = self.stat
 
-        return {
+        data = {
             "name": self.basename,
+            "relpath": self.getDirName(),
+            "type": self.getType(),
             "size": stat.st_size,
             "mtime": stat.st_mtime,
-            "security": {
+        }
+
+        if kwargs.get("extended"):
+            data["security"] = {
                 "uid": stat.st_uid,
                 "gid": stat.st_gid,
                 "mode": stat.st_mode,
-            },
-        }
+            }
+        return data
 
     def __unicode__(self):
         return self.basename
@@ -93,7 +109,8 @@ class Album(AP3obj):
             "relpath": self.relpath,
         }
         if kwargs.get("listing", True):
-            data["listing"] = [ o._serialize(listing=False) for o in self.listMe() ]
+            kwargs["listing"] = kwargs.get("recursive", False)
+            data["listing"] = [ o._serialize(**kwargs) for o in self.listMe() ]
         return data
 
     def listMe(self):
@@ -126,4 +143,4 @@ if __name__ == "__main__":
     AP3obj.setSerializer(PrettyJsonSerializer)
 
     a = Album(directory)
-    print a.serialize()
+    print a.serialize(extended=True)
