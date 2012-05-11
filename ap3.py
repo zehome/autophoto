@@ -4,14 +4,71 @@
 import os
 import json
 
+# Python Imaging Library
+import Image
+import cStringIO
+
+# Some constants
+DEFAULT_SIZE_SMALL = (640, 480)
+DEFAULT_SIZE_MEDIUM = (1280, 1024)
+
 def JsonSerializer(data):
     return json.dumps(data)
 
 def PrettyJsonSerializer(data):
     return json.dumps(data, sort_keys=True, indent=4)
 
+class AbstractCache(object):
+    def set(self, prop, path):
+        pass
+    def get(self, prop, path):
+        return None
+    def getpath(self, prop, path):
+        return None
+
+class SelfDirectoryCache(AbstractCache):
+    def _getCacheDirectory(self, prop, path):
+        dirname = os.path.dirname(path)
+        cachedir = os.path.join(dirname, ".cache")
+
+        # On the fly!
+        if not os.path.exists(cachedir):
+            os.mkdir(cachedir, 0775)
+        return cachedir
+
+    def _getCacheFilename(self, prop, path):
+        baseName = os.path.basename(path)
+        fileName = "%(prop)s.%(name)s" % {
+            'prop': prop, 'name': baseName }
+        return fileName
+
+    def _getCacheFilepath(self, prop, path):
+        dirname = self._getCacheDirectory(prop, path)
+        fname = self._getCacheFilename(prop, path)
+        fpath = os.path.join(dirname, fname)
+        return fpath
+
+    def set(self, prop, path, data):
+        f = open(self._getCacheFilepath(prop, path), "wb+")
+        return f.write(data)
+
+    def get(self, prop, path):
+        try:
+            return open(self._getCacheFilepath(prop, path), "rb")
+        except IOError:
+            return None
+
+    def getpath(self, prop, path):
+        return self._getCacheFilepath(prop, path)
+
 class AP3obj(object):
-    _settings = {"rootpath": None, "serializer": JsonSerializer}
+    _settings = {
+        "rootpath": None,
+        "serializer": JsonSerializer,
+        "image_size_medium": DEFAULT_SIZE_MEDIUM,
+        "image_size_small": DEFAULT_SIZE_SMALL,
+        "cacher": SelfDirectoryCache,
+    }
 
     @classmethod
     def setRoot(cls, path):
@@ -22,9 +79,17 @@ class AP3obj(object):
     def setSerializer(cls, callback):
         cls._settings["serializer"] = callback
 
+    @property
+    def cache(self):
+        return self._settings["cacher"]()
+
     def __init__(self, path, *args, **kw):
         self.abspath = os.path.abspath(path)
         self.relpath = self.getRelativePath(self.abspath)
+
+    @property
+    def basename(self):
+        return os.path.basename(self.abspath)
 
     def getRelativePath(self, path):
         # Check for unconfigures AP3obj !
@@ -32,9 +97,6 @@ class AP3obj(object):
         assert(path.startswith(self._settings["rootpath"]))
         return os.path.relpath(path, self._settings["rootpath"])
 
-    @property
-    def basename(self):
-        return os.path.basename(self.abspath)
 
     def _serialize(self, **kwargs):
         assert(False)
@@ -57,6 +119,9 @@ class AP3obj(object):
 
     def checkPerms(self, path):
         return True
+
+    def __str__(self):
+        return self.__unicode__()
 
 class Photo(AP3obj):
     def __init__(self, *args, **kwargs):
@@ -98,6 +163,35 @@ class Photo(AP3obj):
                 "mode": stat.st_mode,
             }
         return data
+
+    def _thumbnail(self, prop):
+        f = self.cache.get(prop, self.abspath)
+        if not f:
+            im = Image.open(self.abspath)
+            oldFormat = im.format
+            im.thumbnail(self._settings["image_size_%s" % (prop,)],
+                Image.ANTIALIAS)
+            sio = cStringIO.StringIO()
+            im.save(sio, oldFormat)
+            sio.seek(0)
+            self.cache.set(prop, self.abspath, sio.read())
+            sio.seek(0)
+            f = sio
+        return f and f.read() or None
+
+    def getDataOriginal(self):
+        """returns "full" size for this picture"""
+        originalPath = self.abspath
+        f = open(originalPath, "rb")
+        return f.read()
+
+    def getDataMedium(self):
+        """returns "medium" size for this picture"""
+        return self._thumbnail("medium")
+
+    def getDataSmall(self):
+        """returns "small" size for this picture"""
+        return self._thumbnail("small")
 
     def __unicode__(self):
         return self.basename
@@ -144,3 +238,11 @@ if __name__ == "__main__":
 
     a = Album(directory)
     print a.serialize(extended=True)
+
+    for p in a.listMe():
+        if isinstance(p, Photo):
+            pData = p.getDataMedium()
+            print "Got p: %s dataMedium: %d" % (p, len(pData))
+            pData = p.getDataSmall()
+            print "Got p: %s dataSmall: %d" % (p, len(pData))
+
