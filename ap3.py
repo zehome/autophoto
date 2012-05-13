@@ -8,6 +8,11 @@ import json
 import Image
 import cStringIO
 
+try:
+    import epeg
+except ImportError:
+    epeg = None
+
 # Some constants
 DEFAULT_SIZE_SMALL = (640, 480)
 DEFAULT_SIZE_MEDIUM = (1280, 1024)
@@ -167,16 +172,22 @@ class Photo(AP3obj):
     def _thumbnail(self, prop):
         f = self.cache.get(prop, self.abspath)
         if not f:
-            im = Image.open(self.abspath)
-            oldFormat = im.format
-            im.thumbnail(self._settings["image_size_%s" % (prop,)],
-                Image.ANTIALIAS)
-            sio = cStringIO.StringIO()
-            im.save(sio, oldFormat)
-            sio.seek(0)
-            self.cache.set(prop, self.abspath, sio.read())
-            sio.seek(0)
-            f = sio
+            max_size = self._settings["image_size_%s" % (prop,)]
+            if epeg:
+                e = epeg.Epeg(filename=self.abspath)
+                out_filename = self.cache.getpath(prop, self.abspath)
+                e.simple_resize(out_filename, max_size)
+                f = self.cache.get(prop, self.abspath)
+            else:
+                im = Image.open(self.abspath)
+                oldFormat = im.format
+                im.thumbnail(max_size, Image.ANTIALIAS)
+                sio = cStringIO.StringIO()
+                im.save(sio, oldFormat)
+                sio.seek(0)
+                self.cache.set(prop, self.abspath, sio.read())
+                sio.seek(0)
+                f = sio
         return f and f.read() or None
 
     def getDataOriginal(self):
