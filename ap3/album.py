@@ -27,16 +27,6 @@ class Album(AP3obj):
                 return Photo
         return None
 
-    def _serialize(self, **kwargs):
-        data = {
-            "abspath": self.abspath,
-            "relpath": self.relpath,
-        }
-        if kwargs.get("listing", True):
-            kwargs["listing"] = kwargs.get("recursive", False)
-            data["listing"] = [ o._serialize(**kwargs) for o in self.listMe() ]
-        return data
-
     def listMe(self):
         ret = []
 
@@ -50,8 +40,21 @@ class Album(AP3obj):
                     print "Unknown file %s." % (xname,)
                 else:
                     ret.append(klass(xpath))
-
         return ret
+
+    def _serialize(self, **kwargs):
+        data = {
+            "type": "DIR",
+            "rpath": self.relpath.decode("utf-8", 'replace'),
+            "elements": len(self.listMe()),
+        }
+        if kwargs.get("extended"):
+            data["absolutepath"] = self.abspath
+
+        if kwargs.get("listing", True):
+            kwargs["listing"] = kwargs.get("recursive", False)
+            data["listing"] = [ o._serialize(**kwargs) for o in self.listMe() ]
+        return data
 
     def __unicode__(self):
         return self.basename

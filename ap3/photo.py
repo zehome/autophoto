@@ -38,9 +38,10 @@ class Photo(AP3obj):
         stat = self.stat
 
         data = {
-            "name": self.basename,
-            "relpath": self.getDirName(),
-            "type": self.getType(),
+            "type": "IMG",
+            "imgtype": self.getType(),
+            "name": self.basename.decode("utf-8", 'replace'),
+            "rpath": self.getDirName().decode("utf-8", 'replace'),
             "size": stat.st_size,
             "mtime": stat.st_mtime,
         }
@@ -51,6 +52,7 @@ class Photo(AP3obj):
                 "gid": stat.st_gid,
                 "mode": stat.st_mode,
             }
+            data["absolutepath"] = self.abspath
         return data
 
     def _thumbnail(self, prop):
