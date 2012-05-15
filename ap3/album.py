@@ -6,6 +6,8 @@ from ap3.core import AP3obj
 from ap3.photo import Photo
 
 class Album(AP3obj):
+    PHOTO_EXTENSIONS = (".jpg", ".jpeg")
+
     def canRead(self, path):
         readok = super(Album, self).canRead(path)
         if readok:
@@ -20,9 +22,9 @@ class Album(AP3obj):
         if os.path.isdir(path):
             return Album
         elif os.path.isfile(path) or os.path.islink(path):
-            for extension in ("jpg", "jpeg", "png"):
-                if path.lower().endswith(extension):
-                    return Photo
+            ext = os.path.splitext(path)[1].lower()
+            if ext in Album.PHOTO_EXTENSIONS:
+                return Photo
         return None
 
     def _serialize(self, **kwargs):
