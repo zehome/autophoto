@@ -6,6 +6,15 @@ from ap3.core import AP3obj
 from ap3.photo import Photo
 
 class Album(AP3obj):
+    def canRead(self, path):
+        readok = super(Album, self).canRead(path)
+        if readok:
+            # Files/Directories starting with "." are
+            # not permitted by default.
+            pathbasename = os.path.basename(path)
+            readok = not pathbasename.startswith(".")
+        return readok
+
     def getObjectKlass(self, path):
         """Discover what type of object we should build."""
         if os.path.isdir(path):
@@ -33,7 +42,7 @@ class Album(AP3obj):
 
         for xname in os.listdir(self.abspath):
             xpath = os.path.join(self.abspath, xname)
-            if not self.checkPerms(xpath):
+            if not self.canRead(xpath):
                 print "No permission to read %s." % (xname,)
             else:
                 klass = self.getObjectKlass(xpath)

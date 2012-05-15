@@ -43,7 +43,7 @@ class AP3obj(object):
     def cache(self):
         return self._settings["cacher"]()
 
-    def checkPerms(self, path):
+    def canRead(self, path):
         return True
 
     def getRelativePath(self, path):
