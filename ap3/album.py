@@ -23,8 +23,6 @@ class Album(AP3obj):
             for extension in ("jpg", "jpeg", "png"):
                 if path.lower().endswith(extension):
                     return Photo
-        else:
-            print "Gni %s" % (path,)
         return None
 
     def _serialize(self, **kwargs):
