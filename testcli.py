@@ -22,7 +22,9 @@ if __name__ == "__main__":
     for p in a.listMe():
         if isinstance(p, Photo):
             pData = p.getDataMedium()
-            print "Got p: %s dataMedium: %d" % (p, len(pData))
+            if pData:
+                print "Got p: %s dataMedium: %d" % (p, len(pData))
             pData = p.getDataSmall()
-            print "Got p: %s dataSmall: %d" % (p, len(pData))
+            if pData:
+                print "Got p: %s dataSmall: %d" % (p, len(pData))
 
