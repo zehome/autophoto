@@ -1,1 +1,74 @@
-<html>Hello from static!</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>autophoto 3</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="css/autophoto3.css" />
+    <script src="dist/jquery-1.7.2.js"></script>
+    <script src="dist/sammy.js"></script>
+    <!-- Template library -->
+    <script src="dist/mustache.js"></script>
+    <script src="dist/sammy.mustache.js"></script>
+    <!-- Autophoto javascript code -->
+    <script src="js/autophoto3.js"></script>
+</head>
+<body style="background-color: black; color: white;">
+<div id="main">
+</div>
+
+<script type="text/javascript">
+var ap3_url = "http://localhost:8000/";
+
+function getAlbums(context, path)
+{
+    if (! path || path == 'undefined')
+        path = '';
+
+    context.load('/album/'+path, {dataType: 'json'})
+        .then(function(directory) {
+            context.log(directory.elements + " albums in "+directory.rpath);
+            return directory.listing;
+        })
+        .then(function(elements) {
+            context.log(elements);
+            $.each(elements, function(i, element) {
+                if (element.type == "DIR")
+                {
+                    var album = element;
+                    context.log("Album "+album.name+" with "+album.elements+" elements.");
+                    context.render('/static/templates/album.ms',
+                        {album: album}).appendTo(context.$element());
+                } else if (element.type == "IMG") {
+                    var photo = element;
+                    photo.path = '/photodata/'+photo.rpath+'/'+photo.name;
+                    context.log("Photo "+photo.name+' @ '+photo.path);
+                    context.render('/static/templates/photo.ms',
+                        {photo: photo}).appendTo(context.$element());
+                } else {
+                    context.log("Unknown element "+element.type);
+                }
+            });
+        });
+}
+
+
+var app = Sammy('#main', function() {
+    this.use('Mustache', 'ms');
+    this.get('#/root', function(context) {
+        getAlbums(context, '/');
+    });
+    this.get(/\#\/album\/(.*)/, function(context) {
+        getAlbums(context, this.params['splat']);
+    });
+});
+
+$.ajaxSetup({cache: false});
+
+$(document).ready(function(){
+    app.run('#/root');
+});
+
+</script>
+</body>
+</html>
