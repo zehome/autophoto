@@ -7,6 +7,9 @@ from ap3.photo import Photo
 
 class Album(AP3obj):
     PHOTO_EXTENSIONS = (".jpg", ".jpeg")
+    def __init__(self, *args, **kwargs):
+        super(Album, self).__init__(*args, **kwargs)
+        self.name = os.path.basename(self.relpath)
 
     def canRead(self, path):
         readok = super(Album, self).canRead(path)
@@ -45,6 +48,7 @@ class Album(AP3obj):
     def _serialize(self, **kwargs):
         data = {
             "type": "DIR",
+            "name": self.name.decode("utf-8", 'replace'),
             "rpath": self.relpath.decode("utf-8", 'replace'),
             "elements": len(self.listMe()),
         }
