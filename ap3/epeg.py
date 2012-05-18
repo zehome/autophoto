@@ -70,7 +70,7 @@ class Epeg(object):
     def _open_from_memory(self, data):
         """data representation of "int" size"""
         size = c_int(len(data))
-        self.image = _libepeg.epeg_memory_open(c_char_p(data), size)
+        self.image = c_void_p(_libepeg.epeg_memory_open(c_char_p(data), size))
 
     def size_get(self):
         """returns (width, height) tuple of the current loaded image"""
@@ -128,8 +128,6 @@ class Epeg(object):
         data_size = c_int()
         _libepeg.epeg_memory_output_set(self.image, byref(data_ptr), byref(data_size))
         self.encode()
-        print data_size
-        print repr(data_ptr)
         return data_ptr and data_ptr.value or b""
 
     def encode(self):
@@ -150,7 +148,6 @@ class Epeg(object):
         else:
             w = size[0] * w / h
             h = size[0]
-        print "Generating thumb %dx%d to x.jpg" % (w, h)
         self.decode_size_set(w, h)
         self.quality_set(100)
         self.thumbnail_comments_enable(0)
