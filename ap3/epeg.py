@@ -186,16 +186,20 @@ class Epeg(object):
 
     def simple_resize(self, output_filename, size):
         w, h = self.size_get()
-        if (w > h):
-            h = size[1] * h / w
-            w = size[1]
-        else:
-            w = size[0] * w / h
-            h = size[0]
-        self.decode_size_set(w, h)
-        self.quality_set(100)
-        self.thumbnail_comments_enable(0)
-        self.write_to_file(output_filename)
+        need_resize = w > size[0] or h > size[1]
+        if need_resize:
+            if (w > h):
+                h = size[0] * h / w
+                w = size[0]
+            else:
+                w = size[1] * w / h
+                h = size[1]
+
+            self.decode_size_set(w, h)
+            self.quality_set(100)
+            self.thumbnail_comments_enable(0)
+            self.write_to_file(output_filename)
+        return need_resize
 
 if __name__ == "__main__":
     import sys
