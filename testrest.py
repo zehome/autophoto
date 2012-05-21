@@ -70,14 +70,18 @@ class AP3PhotoData(object):
             raise cherrypy.HTTPError(404)
 
         cherrypy.response.headers["Content-Type"] = "image/jpeg"
-        return obj.getDataMedium()
+        return obj.getDataSmall()
 
 # Configure Autophoto 3
 from ap3.core import AP3obj
 from ap3.serializer import PrettyJsonSerializer
+from ap3.cache import SingleDirectoryHashCache
+
+SingleDirectoryHashCache.setCachePath("/home/ed/tmp/ap3cache")
 
 AP3obj.setRoot("/home/ed/Documents/autophoto2")
 AP3obj.setSerializer(PrettyJsonSerializer)
+AP3obj.setCacher(SingleDirectoryHashCache)
 
 root = Root()
 root.album = AP3AlbumMeta("main", "/home/ed/Documents/autophoto2")
@@ -89,6 +93,7 @@ conf = {
         'server.socket_host': '0.0.0.0',
         'server.socket_port': 8000,
         'tools.gzip.on': True,
+        'engine.autoreload_on': True,
     },
     '/': {
         'request.dispatch': cherrypy.dispatch.MethodDispatcher(),

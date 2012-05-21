@@ -13,12 +13,18 @@
     <!-- Autophoto javascript code -->
     <script src="js/autophoto3.js"></script>
 </head>
-<body style="background-color: black; color: white;">
+<body>
+<div id="debug"></div>
 <div id="main">
 </div>
 
 <script type="text/javascript">
 var ap3_url = "http://localhost:8000/";
+
+function debugPrint(text)
+{
+    $("#debug").html(text);
+}
 
 function getAlbums(context, path)
 {
@@ -26,32 +32,51 @@ function getAlbums(context, path)
         path = '';
 
     context.load('/album/'+path, {dataType: 'json'})
-        .then(function(directory) {
-            context.log(directory.elements + " albums in "+directory.rpath);
-            return directory.listing;
-        })
-        .then(function(elements) {
-            context.log(elements);
-            $.each(elements, function(i, element) {
-                if (element.type == "DIR")
-                {
-                    var album = element;
-                    context.log("Album "+album.name+" with "+album.elements+" elements.");
+    .then(function(directory) {
+        context.log(directory.elements + " albums in "+directory.rpath);
+        return directory.listing;
+    })
+    .then(function(elements) {
+        context.app.swap('');
+        context.log(elements);
+        debugPrint("Elements: "+ elements.length);
+        elements.sort(function(a,b) {
+            ret = a.type < b.type ? -1 : 1;
+            ret = a.type == b.type ? 0 : ret;
+            if (ret == 0)
+            {
+                ret = a.name < b.name ? -1 : 1;
+                ret = a.name == b.name ? 0 : ret;
+                if (ret == 0 && a.type == "IMG")
+                    ret = a.mtime < b.time ? -1 : 1;
+            }
+            return ret;
+        });
+        $.each(elements, function(i, element) {
+            if (element.type == "DIR") {
+                var album = element;
+                if (album.cover) {
+                    album.coverimg = '/photodata/'+
+                        album.cover.rpath+'/'+
+                        album.cover.name;
+                } else {
+                    album.coverimg = '';
+                }
+                if (album.elements > 0) {
                     context.render('/static/templates/album.ms',
                         {album: album}).appendTo(context.$element());
-                } else if (element.type == "IMG") {
-                    var photo = element;
-                    photo.path = '/photodata/'+photo.rpath+'/'+photo.name;
-                    context.log("Photo "+photo.name+' @ '+photo.path);
-                    context.render('/static/templates/photo.ms',
-                        {photo: photo}).appendTo(context.$element());
-                } else {
-                    context.log("Unknown element "+element.type);
                 }
-            });
+            } else if (element.type == "IMG") {
+                var photo = element;
+                photo.path = '/photodata/'+photo.rpath+'/'+photo.name;
+                context.render('/static/templates/photo.ms',
+                    {photo: photo}).appendTo(context.$element());
+            } else {
+                context.log("Unknown element "+element.type);
+            }
         });
+    });
 }
-
 
 var app = Sammy('#main', function() {
     this.use('Mustache', 'ms');
@@ -60,6 +85,9 @@ var app = Sammy('#main', function() {
     });
     this.get(/\#\/album\/(.*)/, function(context) {
         getAlbums(context, this.params['splat']);
+    });
+    this.get(/\#\/viewalbum\/(.*)/, function(context) {
+        viewalbum(context, this.params['splat']);
     });
 });
 
