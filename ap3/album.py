@@ -10,6 +10,7 @@ class Album(AP3obj):
     def __init__(self, *args, **kwargs):
         super(Album, self).__init__(*args, **kwargs)
         self.name = os.path.basename(self.relpath)
+        self._dirlist_cache = None
 
     def canRead(self, path):
         readok = super(Album, self).canRead(path)
@@ -30,27 +31,46 @@ class Album(AP3obj):
                 return Photo
         return None
 
-    def listMe(self):
-        ret = []
+    def _get_dirlist(self):
+        if self._dirlist_cache is None:
+            self._dirlist_cache = []
+            for xname in os.listdir(self.abspath):
+                xpath = os.path.join(self.abspath, xname)
+                if self.canRead(xpath):
+                    self._dirlist_cache.append(xpath)
+        return self._dirlist_cache
 
-        for xname in os.listdir(self.abspath):
-            xpath = os.path.join(self.abspath, xname)
-            if not self.canRead(xpath):
-                print "No permission to read %s." % (xname,)
+    def listMe(self):
+        for xpath in self._get_dirlist():
+            klass = self.getObjectKlass(xpath)
+            if not klass:
+                print "Unknown file %s." % (xname,)
             else:
-                klass = self.getObjectKlass(xpath)
-                if not klass:
-                    print "Unknown file %s." % (xname,)
-                else:
-                    ret.append(klass(xpath))
+                yield klass(xpath)
+
+    def countMe(self):
+        ret = 0
+        for xpath in self._get_dirlist():
+            if self.getObjectKlass(xpath):
+                ret += 1
         return ret
+
+    def getCover(self):
+        for e in self.listMe():
+            if isinstance(e, Photo):
+                return e._serialize()
+        # Recursive! (if album only contains subdirectories)
+        for e in self.listMe():
+            if isinstance(e, Album):
+                return e.getCover()
 
     def _serialize(self, **kwargs):
         data = {
             "type": "DIR",
             "name": self.name.decode("utf-8", 'replace'),
             "rpath": self.relpath.decode("utf-8", 'replace'),
-            "elements": len(self.listMe()),
+            "cover": self.getCover(),
+            "elements": self.countMe(),
         }
         if kwargs.get("extended"):
             data["absolutepath"] = self.abspath
