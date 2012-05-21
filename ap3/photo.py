@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
+import cStringIO
+
+Image = None
+epeg = None
 
 try:
     import epeg
-    Image = None
-except ImportError:
-    epeg = None
-    # PIL
+except:
+    pass
+
+if not epeg:
     import Image
 
 from ap3.core import AP3obj
@@ -60,10 +65,17 @@ class Photo(AP3obj):
         if not f:
             max_size = self._settings["image_size_%s" % (prop,)]
             if epeg:
-                e = epeg.Epeg(filename=self.abspath)
+                e = epeg.Epeg(fileinput=open(self.abspath, "rb"))
                 out_filename = self.cache.getpath(prop, self.abspath)
-                e.simple_resize(out_filename, max_size)
-                f = self.cache.get(prop, self.abspath)
+                t3 = time.time()
+                resized = e.simple_resize(out_filename, max_size)
+                t4 = time.time()
+                e.close()
+                if resized:
+                    print "Resizing took: %.04fs"  % (t4-t3,)
+                    f = self.cache.get(prop, self.abspath)
+                else:
+                    f = open(self.abspath, "rb")
             else:
                 im = Image.open(self.abspath)
                 oldFormat = im.format
