@@ -37,6 +37,50 @@ EPEG_BGRA8 = 5
 EPEG_ARGB32 = 6
 EPEG_CMYK = 7
 
+# Prototypes
+_libepeg.epeg_file_open.restype = c_void_p
+_libepeg.epeg_file_open.argtypes = [c_char_p, ]
+
+_libepeg.epeg_memory_open.restype = c_void_p
+_libepeg.epeg_memory_open.argtypes = [c_void_p, c_int]
+
+_libepeg.epeg_size_get.restype = None
+_libepeg.epeg_size_get.argtypes = [c_void_p, POINTER(c_int), POINTER(c_int)]
+
+_libepeg.epeg_decode_size_set.restype = None
+_libepeg.epeg_decode_size_set.argtypes = [c_void_p, c_int, c_int]
+
+_libepeg.epeg_colorspace_get.restype = None
+_libepeg.epeg_colorspace_get.argtypes = [c_void_p, POINTER(c_int)]
+
+_libepeg.epeg_decode_colorspace_set.restype = None
+_libepeg.epeg_decode_colorspace_set.argtypes = [c_void_p, c_int]
+
+_libepeg.epeg_comment_get.restype = c_char_p
+_libepeg.epeg_comment_get.argtypes = [c_void_p, ]
+
+_libepeg.epeg_thumbnail_comments_get.restype = None
+_libepeg.epeg_thumbnail_comments_get.argtypes = [c_void_p, POINTER(Epeg_Thumbnail_Info) ]
+
+_libepeg.epeg_thumbnail_comments_enable.restype = None
+_libepeg.epeg_thumbnail_comments_enable.argtypes = [c_void_p, c_int]
+
+_libepeg.epeg_quality_set.restype = None
+_libepeg.epeg_quality_set.argtypes = [c_void_p, c_int]
+
+_libepeg.epeg_file_output_set.restype = None
+_libepeg.epeg_file_output_set.argtypes = [c_void_p, c_char_p]
+
+_libepeg.epeg_memory_output_set.restype = None
+_libepeg.epeg_memory_output_set.argtypes = [c_void_p, POINTER(c_void_p), POINTER(c_int)]
+
+_libepeg.epeg_encode.restype = c_int
+_libepeg.epeg_encode.argtypes = [c_void_p, ]
+
+_libepeg.epeg_close.restype = None
+_libepeg.epeg_close.argtypes = [c_void_p, ]
+
+
 class EpegException(Exception): pass
 
 class Epeg(object):
@@ -56,7 +100,7 @@ class Epeg(object):
             self._open_from_memory(self._image_data)
 
         if not self.image:
-            raise EpegException("Unable to open file %s.\n" % path)
+            raise EpegException("Unable to open image '%s'.\n" % filename)
 
     def __del__(self):
         self.close()
@@ -69,8 +113,8 @@ class Epeg(object):
 
     def _open_from_memory(self, data):
         """data representation of "int" size"""
-        size = c_int(len(data))
-        self.image = c_void_p(_libepeg.epeg_memory_open(c_char_p(data), size))
+        size = len(data)
+        self.image = _libepeg.epeg_memory_open(c_char_p(data), c_int(size))
 
     def size_get(self):
         """returns (width, height) tuple of the current loaded image"""
@@ -155,37 +199,13 @@ class Epeg(object):
 
 if __name__ == "__main__":
     import sys
+    import time
+
     if len(sys.argv) < 2:
         print "Not enough arguments!"
         sys.exit(0)
 
-    epeg = Epeg(filename=sys.argv[1])
-    print "Size get:",
-    print epeg.size_get()
-
-    print "Opening from memory."
     epeg = Epeg(fileinput=open(sys.argv[1], "rb"))
-
-    print "Comment get:",
-    print epeg.comment_get()
-    print epeg.thumbnail_comments_get()
-
-    w, h = epeg.size_get()
-    if (w > h):
-        h = 640 * h / w
-        w = 640
-    else:
-        w = 640 * w / h
-        h = 640
-
-    print "Generating thumb %dx%d to x.jpg" % (w, h)
-
-    epeg.decode_size_set(w, h)
-    epeg.quality_set(100)
-    epeg.thumbnail_comments_enable(0)
-    epeg.write_to_file("x.jpg")
-    #data = epeg.write_to_memory()
-    #print "%d len thumbnail." % (len(data),)
-    #f = open("x.jpg", "wb+")
-    #f.write(data)
-    #f.close()
+    t1 = time.time()
+    epeg.simple_resize("x.jpg", (640,480))
+    print time.time() - t1
