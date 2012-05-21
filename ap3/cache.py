@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import hashlib
 
 class AbstractCache(object):
     def set(self, prop, path):
@@ -44,4 +45,27 @@ class SelfDirectoryCache(AbstractCache):
 
     def getpath(self, prop, path):
         return self._getCacheFilepath(prop, path)
+
+class SingleDirectoryHashCache(SelfDirectoryCache):
+    _cachePath = None
+
+    @staticmethod
+    def setCachePath(path):
+        SingleDirectoryHashCache._cachePath = path
+        if not os.path.exists(path):
+            os.mkdir(path, 0755)
+
+    def _getCacheFilepath(self, prop, path):
+        hashfilename = hashlib.sha1("%s-%s" % (path, prop)).hexdigest()
+        return os.path.join(self._cachePath, hashfilename)
+
+    def get(self, *args, **kw):
+        if not self._cachePath:
+            return None
+        return super(SingleDirectoryHashCache, self).get(*args, **kw)
+
+    def set(self, *args, **kw):
+        if not self._cachePath:
+            return None
+        return super(SingleDirectoryHashCache, self).set(*args, **kw)
 
