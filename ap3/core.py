@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import traceback
 
 from ap3.cache import SelfDirectoryCache
 from ap3.serializer import JsonSerializer
@@ -35,6 +36,10 @@ class AP3obj(object):
     def setSerializer(cls, callback):
         cls._settings["serializer"] = callback
 
+    @classmethod
+    def setCacher(cls, klass):
+        cls._settings["cacher"] = klass
+
     @property
     def basename(self):
         return os.path.basename(self.abspath)
@@ -57,4 +62,8 @@ class AP3obj(object):
 
     def serialize(self, **kwargs):
         data = self._serialize(**kwargs)
-        return self._settings["serializer"](data)
+        try:
+            return self._settings["serializer"](data)
+        except:
+            traceback.print_exc()
+            print data
